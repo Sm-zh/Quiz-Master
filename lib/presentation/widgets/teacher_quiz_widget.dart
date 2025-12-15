@@ -9,54 +9,78 @@ import '../../data/data_sources/base_data_source.dart';
 class TeacherQuizWidget extends StatelessWidget {
   final String token;
   final Quiz quiz;
+
   const TeacherQuizWidget({super.key, required this.token, required this.quiz});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-      ),
-      padding: EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 8,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    quiz.title,
-                    style: TextStyle(fontSize: 20, color: Colors.black),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: Color(0xff2c2c2c),
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-            ),
-            child: TextButton(
-              onPressed: () => _showDetails(quiz, context),
-              child: Text(
-                'Details',
-                style: TextStyle(fontSize: 16, color: Colors.white),
-              ),
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _openDetails(context),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(child: _buildQuizInfo()),
+              const Icon(Icons.chevron_right, color: Colors.black54),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  void _showDetails(Quiz quiz, BuildContext context) {
+  Widget _buildQuizInfo() {
+    final isOpen = quiz.isOpen ?? false;
+    final joinCode = quiz.joinCode;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          quiz.title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        if (joinCode != null && joinCode.isNotEmpty)
+          Text(
+            'Code: $joinCode',
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
+          ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isOpen ? Colors.green[600] : Colors.red[600],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            isOpen ? 'Open' : 'Closed',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openDetails(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute<void>(

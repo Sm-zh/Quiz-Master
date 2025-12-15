@@ -17,7 +17,16 @@ class AuthDataSource {
       '$BASE_URL/auth/register',
       body: {'name': name, 'email': email, 'password': password, 'role': role},
     );
-    return User.fromJson(response);
+
+    final userJson = response['user'] ?? response;
+
+    return User.fromJson({
+      'id': userJson['id'] ?? userJson['_id'],
+      'name': userJson['name'],
+      'email': userJson['email'],
+      'role': userJson['role'],
+      'token': response['token'],
+    });
   }
 
   // POST /auth/login
@@ -26,11 +35,14 @@ class AuthDataSource {
       '$BASE_URL/auth/login',
       body: {'email': email, 'password': password},
     );
+
+    final userJson = response['user'] ?? response;
+
     return User.fromJson({
-      'id': response['user']['id'],
-      'name': response['user']['id'],
-      'email': response['user']['email'],
-      'role': response['user']['role'],
+      'id': userJson['id'] ?? userJson['_id'],
+      'name': userJson['name'],
+      'email': userJson['email'],
+      'role': userJson['role'],
       'token': response['token'],
     });
   }

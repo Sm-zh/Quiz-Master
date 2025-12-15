@@ -13,7 +13,7 @@ class Answer {
     return Answer(
       questionId: json['questionId'],
       chosenOptionIndex: json['chosenOptionIndex'] as int,
-      isCorrect: ['isCorrect'] as bool,
+      isCorrect: json['isCorrect'] as bool?,
     );
   }
 
