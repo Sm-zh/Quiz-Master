@@ -10,7 +10,19 @@ class QuizDataSource {
 
   QuizDataSource(this.client, {required this.token});
 
-  // POST /quizzes (Teacher only)
+  List<dynamic> _parseList(dynamic response) {
+    if (response == null) return [];
+    if (response is List) return response;
+
+    if (response is Map<String, dynamic>) {
+      if (response['list'] is List) return response['list'];
+      if (response['data'] is List) return response['data'];
+      if (response['attempts'] is List) return response['attempts'];
+      if (response['quizzes'] is List) return response['quizzes'];
+    }
+    return [];
+  }
+
   Future<Quiz> createQuiz(String title, List<Question> questions) async {
     final response = await client.post(
       '$BASE_URL/quizzes',
@@ -20,94 +32,85 @@ class QuizDataSource {
         'questions': questions.map((q) => q.toJson()).toList(),
       },
     );
-    return Quiz.fromJson(response, isTeacher: true);
+    final data = response.containsKey('quiz') ? response['quiz'] : response;
+    return Quiz.fromJson(data, isTeacher: true);
   }
 
-  // GET /quizzes (Teacher only)
   Future<List<Quiz>> listMyQuizzes() async {
     final response = await client.get('$BASE_URL/quizzes', token: token);
-    final List list = response['list'];
-    return (list)
-        .map((json) => Quiz.fromJson(json, isTeacher: true))
-        .toList();
+    final List list = _parseList(response);
+    return list.map((json) => Quiz.fromJson(json, isTeacher: true)).toList();
   }
 
-  // POST /quizzes/:quizId/open (Teacher only)
   Future<Quiz> openQuiz(String quizId) async {
-    final token = this.token;
     final response = await client.post(
       '$BASE_URL/quizzes/$quizId/open',
       token: token,
+      body: {},
     );
-    return Quiz.fromJson(response['quiz'], isTeacher: true);
+    final data = response.containsKey('quiz') ? response['quiz'] : response;
+    return Quiz.fromJson(data, isTeacher: true);
   }
 
-  // POST /quizzes/:quizId/close (Teacher only)
   Future<Quiz> closeQuiz(String quizId) async {
-    final token = this.token;
     final response = await client.post(
       '$BASE_URL/quizzes/$quizId/close',
       token: token,
+      body: {},
     );
-    return Quiz.fromJson(response['quiz'], isTeacher: true);
+    final data = response.containsKey('quiz') ? response['quiz'] : response;
+    return Quiz.fromJson(data, isTeacher: true);
   }
 
-  // POST /quizzes/join (Student only)
   Future<Quiz> joinQuiz(String code) async {
-    final token = this.token;
     final response = await client.post(
       '$BASE_URL/quizzes/join',
       token: token,
       body: {'code': code},
     );
-    return Quiz.fromJson(response, isTeacher: false);
+    final data = response.containsKey('quiz') ? response['quiz'] : response;
+    return Quiz.fromJson(data, isTeacher: false);
   }
 
-  // POST /quizzes/:quizId/submit (Student only)
   Future<Attempt> submitQuiz(String quizId, List<Answer> answers) async {
-    final token = this.token;
     final response = await client.post(
       '$BASE_URL/quizzes/$quizId/submit',
       token: token,
       body: {'answers': answers.map((a) => a.toJson()).toList()},
     );
-    return Attempt.fromJson(response);
+    final data = response.containsKey('attempt')
+        ? response['attempt']
+        : response;
+    return Attempt.fromJson(data);
   }
 
-  // GET /quizzes/my-attempts (Student only)
   Future<List<Attempt>> getMyAttempts() async {
-    final token = this.token;
     final response = await client.get(
       '$BASE_URL/quizzes/my-attempts',
       token: token,
     );
-    return (response as List<dynamic>)
-        .map((json) => Attempt.fromJson(json))
-        .toList();
+    final List list = _parseList(response);
+    return list.map((json) => Attempt.fromJson(json)).toList();
   }
 
-  // GET /quizzes/:quizId/attempts (Teacher only)
   Future<List<Attempt>> getQuizAttempts(String quizId) async {
-    final token = this.token;
     final response = await client.get(
       '$BASE_URL/quizzes/$quizId/attempts',
       token: token,
     );
-    return (response as List<dynamic>)
-        .map((json) => Attempt.fromJson(json))
-        .toList();
+    final List list = _parseList(response);
+    return list.map((json) => Attempt.fromJson(json)).toList();
   }
 
-  // GET /quizzes/:quizId/stats (Teacher only)
   Future<Map<String, dynamic>> getQuizStatsJson(
     String token,
     String quizId,
   ) async {
-    // Endpoint: GET /quizzes/:quizId/stats
     final response = await client.get(
       '$BASE_URL/quizzes/$quizId/stats',
       token: token,
     );
+    if (response.containsKey('stats')) return response['stats'];
     return response;
   }
 }

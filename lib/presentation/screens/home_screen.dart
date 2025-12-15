@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
-import 'student_home_screen.dart';
-import 'teacher_home_screen.dart';
+import 'package:quiz_master/data/data_repository/auth_repository.dart';
+import 'package:quiz_master/data/models/user.dart';
+import 'package:quiz_master/presentation/screens/student_home_screen.dart';
+import 'package:quiz_master/presentation/screens/teacher_home_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  final String role;
-  final String token;
-  const HomeScreen({super.key, required this.role, required this.token});
+class HomeScreen extends StatelessWidget {
+  final User user;
+  final AuthRepository authRepository;
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  const HomeScreen({
+    super.key,
+    required this.user,
+    required this.authRepository,
+  });
 
-class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    return widget.role == 'teacher'
-        ? TeacherHomeScreen(token: widget.token)
-        : widget.role == 'student'
-        ? StudentHomeScreen()
-        : Center(child: Text('Unauthorized Access'));
+    if (user.role == 'teacher') {
+      return TeacherHomeScreen(user: user, authRepository: authRepository);
+    }
+
+    if (user.role == 'student') {
+      return StudentHomeScreen(user: user, authRepository: authRepository);
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Error')),
+      body: Center(child: Text('Unknown role: ${user.role}')),
+    );
   }
 }

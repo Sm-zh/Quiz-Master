@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../data/data_repository/auth_repository.dart';
-import '../../data/models/user.dart';
-import 'create_account_screen.dart';
-import 'home_screen.dart';
+import 'package:quiz_master/data/data_repository/auth_repository.dart';
+import 'package:quiz_master/presentation/screens/create_account_screen.dart';
+import 'package:quiz_master/presentation/screens/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthRepository authRepository;
@@ -15,248 +14,117 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-
-  bool _isLoading = false;
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  bool _loading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
-  Future<void> _signIn() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _loading = true);
     try {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
-
-      final User loggedInUser = await widget.authRepository.login(
-        email: email,
-        password: password,
+      final user = await widget.authRepository.login(
+        _email.text.trim(),
+        _password.text,
       );
 
-      final token = await widget.authRepository.tokenStorage.getToken();
-      _showSnackbar(
-        'Login Successful! Welcome, ${loggedInUser.name}. Token saved: ${token != null}',
-        Colors.green,
-      );
-      Navigator.pushAndRemoveUntil(
-        // ignore: use_build_context_synchronously
-        context,
+      if (!mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) =>
-              HomeScreen(role: loggedInUser.role, token: token!),
+          builder: (_) => HomeScreen(
+            user: user, // ✅ Passed full user object
+            authRepository: widget.authRepository,
+          ),
         ),
-        (Route<dynamic> route) => false,
+        (route) => false,
       );
-    } on Exception catch (e) {
-      _showSnackbar(
-        'Login Failed: ${e.toString().replaceAll('Exception: ', '')}',
-        Colors.red,
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login failed: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _loading = false);
     }
-  }
-
-  void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildAppLogo(),
-                const SizedBox(height: 40),
-
-                _buildInputField(
-                  controller: _emailController,
-                  hint: 'Email',
-                  icon: Icons.email,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null ||
-                        value.isEmpty ||
-                        !value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                _buildInputField(
-                  controller: _passwordController,
-                  hint: 'Password',
-                  icon: Icons.lock,
-                  isPassword: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-
-                _buildCreateAccountLink(),
-                const SizedBox(height: 30),
-
-                _buildSignInButton(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppLogo() {
-    return Column(
-      children: [
-        Container(
-          height: 120,
-          width: 120,
-          decoration: BoxDecoration(
-            color: Colors.grey[800],
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Column(
+      appBar: AppBar(title: const Text('Login'), centerTitle: true),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.quiz_outlined, color: Colors.white, size: 50),
-              Text(
-                'QuizMaster',
-                style: TextStyle(color: Colors.white, fontSize: 14),
+              TextFormField(
+                controller: _email,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Email required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _password,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock),
+                ),
+                obscureText: true,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Password required' : null,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2c2c2c),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _loading ? null : _login,
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Login', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateAccountScreen(
+                        authRepository: widget.authRepository,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Create Account'),
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool isPassword = false,
-    String? Function(String?)? validator,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
       ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword,
-        keyboardType: keyboardType,
-        validator: validator,
-        decoration: InputDecoration(
-          hintText: hint,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 15,
-          ),
-          border: InputBorder.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCreateAccountLink() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            "Don't have an account?",
-            style: TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (BuildContext context) => CreateAccountScreen(
-                    authRepository: widget.authRepository,
-                  ),
-                ),
-              );
-            },
-            child: const Text(
-              'Create One',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSignInButton() {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : _signIn,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.green,
-        minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        elevation: 5,
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-          : const Text(
-              'Sign In',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
     );
   }
 }

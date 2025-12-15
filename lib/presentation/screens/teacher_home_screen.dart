@@ -1,125 +1,110 @@
 import 'package:flutter/material.dart';
-import '../../data/data_sources/base_data_source.dart';
-import '../../data/data_sources/quiz_data_sources.dart';
-import '../../data/models/quiz.dart';
-import 'create_quiz_screen.dart';
-import '../../data/data_repository/quiz_repository.dart';
-import '../widgets/teacher_quiz_widget.dart';
+import 'package:quiz_master/data/data_repository/auth_repository.dart';
+import 'package:quiz_master/data/data_repository/quiz_repository.dart';
+import 'package:quiz_master/data/data_sources/base_data_source.dart';
+import 'package:quiz_master/data/data_sources/quiz_data_sources.dart';
+import 'package:quiz_master/data/models/quiz.dart';
+import 'package:quiz_master/data/models/user.dart';
+import 'package:quiz_master/presentation/screens/create_quiz_screen.dart';
+import 'package:quiz_master/presentation/widgets/teacher_quiz_widget.dart';
+import '../widgets/app_drawer.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
-  final String token;
-  const TeacherHomeScreen({super.key, required this.token});
+  final User user;
+  final AuthRepository authRepository;
+
+  const TeacherHomeScreen({
+    super.key,
+    required this.user,
+    required this.authRepository,
+  });
 
   @override
   State<TeacherHomeScreen> createState() => _TeacherHomeScreenState();
 }
 
 class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
-  List<Quiz>? _quizzes;
-  String? _errorMessage;
-  late final QuizRepository _quizRepository = QuizRepository(
-    widget.token,
-    QuizDataSource(HttpClient(), token: widget.token),
-  );
+  late final QuizRepository _quizRepository;
+  bool _loading = false;
+  List<Quiz> _quizzes = [];
 
   @override
   void initState() {
     super.initState();
-    _getQuizzes();
+    // Initialize repository with the user's token
+    _quizRepository = QuizRepository(
+      widget.user.token!,
+      QuizDataSource(HttpClient(), token: widget.user.token!),
+    );
+    _loadQuizzes();
   }
 
-  Future<void> _getQuizzes() async {
-    setState(() {
-      _quizzes = null;
-      _errorMessage = null;
-    });
-
+  Future<void> _loadQuizzes() async {
+    setState(() => _loading = true);
     try {
-      final loadedQuizzes = await _quizRepository.getTeacherQuizzes();
-
-      setState(() {
-        _quizzes = loadedQuizzes;
-      });
+      final quizzes = await _quizRepository.getTeacherQuizzes();
+      setState(() => _quizzes = quizzes);
     } catch (e) {
-      setState(() {
-        if (e.toString().contains('Status: 200')) {
-          _quizzes = [];
-        } else {
-          _errorMessage = 'Failed to load quizzes: ${e.toString()}';
-        }
-      });
-      ScaffoldMessenger.of(
-        // ignore: use_build_context_synchronously
-        context,
-      ).showSnackBar(SnackBar(content: Text(_errorMessage!)));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load quizzes: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'QuizMaster',
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
+      appBar: AppBar(title: const Text('Teacher Dashboard'), centerTitle: true),
+      // ✅ FIX: Added the Side Menu (Drawer)
+      drawer: AppDrawer(
+        userName: widget.user.name,
+        email: widget.user.email,
+        authRepository: widget.authRepository,
       ),
-      endDrawer: Drawer(),
-      body: Container(
-        height: double.infinity,
-        color: Colors.grey[400],
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          padding: EdgeInsets.all(25),
-          child: Column(
-            spacing: 16,
-            children: [
-              Text('My Quizzes', style: TextStyle(fontSize: 24)),
-              if (_errorMessage != null)
-                Text(
-                  'Error: $_errorMessage',
-                  style: TextStyle(color: Colors.red),
-                )
-              else if (_quizzes == null)
-                Center(child: CircularProgressIndicator())
-              else if (_quizzes!.isEmpty)
-                Center(child: Text('No quizzes found. Create a new one!'))
-              else
-                for (var quiz in _quizzes!)
-                  TeacherQuizWidget(token: widget.token, quiz: quiz),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 64),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Color(0xff2c2c2c),
-              borderRadius: BorderRadius.all(Radius.circular(8)),
+      // ✅ FIX: Added Floating Action Button to Create Quiz
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CreateQuizScreen(token: widget.user.token!),
             ),
-            child: TextButton(
-              onPressed: () => _createQuiz(),
+          );
+          _loadQuizzes(); // Refresh list after returning
+        },
+        label: const Text('Create Quiz'),
+        icon: const Icon(Icons.add),
+        backgroundColor: const Color(0xff2c2c2c),
+        foregroundColor: Colors.white,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _quizzes.isEmpty
+          ? const Center(
               child: Text(
-                'Creat a Quiz',
-                style: TextStyle(fontSize: 16, color: Colors.white),
+                'No quizzes created yet.\nTap + to create one.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadQuizzes,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _quizzes.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, i) {
+                  return TeacherQuizWidget(
+                    token: widget.user.token!,
+                    quiz: _quizzes[i],
+                  );
+                },
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _createQuiz() {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) =>
-            CreateQuizScreen(token: widget.token),
-      ),
     );
   }
 }
