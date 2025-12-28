@@ -20,12 +20,23 @@ class Question {
     bool isTeacher = false,
   }) {
     return Question(
-      id: json['id'] ?? json['_id'],
-      text: json['text'],
-      type: json['type'],
-      options: List<String>.from(json['options']),
-      correctOptionIndex: isTeacher ? json['correctOptionIndex'] as int : null,
-      points: json['points'] as int,
+      // ✅ FIX: Strongest possible ID check.
+      // If the server sends _id, or id, or nothing, this handles it.
+      id: json['id'] ?? json['_id'] ?? json['questionId'] ?? '',
+
+      text: json['text'] ?? 'Question Text',
+      type: json['type'] ?? 'mcq',
+
+      // ✅ FIX: Safe Option List
+      options: json['options'] != null && json['options'] is List
+          ? List<String>.from(json['options'].map((x) => x.toString()))
+          : [],
+
+      correctOptionIndex: isTeacher
+          ? (json['correctOptionIndex'] as num?)?.toInt()
+          : null,
+
+      points: (json['points'] as num?)?.toInt() ?? 1,
     );
   }
 

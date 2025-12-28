@@ -19,13 +19,13 @@ class QuizStatistics {
 
   factory QuizStatistics.fromJson(Map<String, dynamic> json) {
     return QuizStatistics(
-      quizId: json['quizId'],
-      title: json['title'],
-      totalQuestions: json['totalQuestions'],
-      totalStudents: json['totalStudents'],
-      maxPoint: json['maxPoint'],
-      minPoint: json['minPoint'],
-      meanPoint: (json['meanPoint'] as num).toDouble(),
+      quizId: json['quizId'] ?? '',
+      title: json['title'] ?? 'Statistics',
+      totalQuestions: (json['totalQuestions'] as num?)?.toInt() ?? 0,
+      totalStudents: (json['totalStudents'] as num?)?.toInt() ?? 0,
+      maxPoint: (json['maxPoint'] as num?)?.toInt() ?? 0,
+      minPoint: (json['minPoint'] as num?)?.toInt() ?? 0,
+      meanPoint: (json['meanPoint'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
